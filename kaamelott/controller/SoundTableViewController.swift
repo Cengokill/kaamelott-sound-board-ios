@@ -9,7 +9,6 @@
 import UIKit
 import CoreData
 import AVFoundation
-import Haneke
 
 class SoundTableViewController: UITableViewController, NSFetchedResultsControllerDelegate, UISearchResultsUpdating {
     
@@ -25,34 +24,33 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Remove the title of the back button
+        // Supprime le titre du bouton retour
         navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
         
-        // Enable Self Sizing Cells
+        // Active le dimensionnement automatique des cellules
         tableView.estimatedRowHeight = 80.0
-        tableView.rowHeight = UITableViewAutomaticDimension
+        tableView.rowHeight = UITableView.automaticDimension
         
-        // Fetch data from data store
+        // Récupère les données depuis le store
         fetchData {
             self.tableView.reloadData()
         }
         
-        // Register to receive notification
+        // S'inscrit pour recevoir les notifications
         NotificationCenter.default.addObserver(self, selector: #selector(fetchData), name: Notification.Name("SoundAdded"), object: nil)
         
-        // Add a search bar
-        //searchController = UISearchController(searchResultsController: nil)
-        tableView.tableHeaderView = searchController.searchBar
+        // Configure la barre de recherche
+        navigationItem.searchController = searchController
         searchController.searchResultsUpdater = self
-        searchController.dimsBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = "Search sounds..."
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Rechercher des sons..."
         searchController.searchBar.tintColor = UIColor.white
         searchController.searchBar.barTintColor = UIColor.kaamelott
+        definesPresentationContext = true
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        //navigationController?.hidesBarsOnSwipe = true
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -60,7 +58,9 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
     }
     
     typealias fetchDataCompletionHandler = () -> Void
-    func fetchData(completion: fetchDataCompletionHandler? = nil) {
+    
+    /// Récupère les sons depuis Core Data et les stocke dans le tableau sounds.
+    @objc func fetchData(completion: fetchDataCompletionHandler? = nil) {
         if let appDelegate = (UIApplication.shared.delegate as? AppDelegate) {
             let context = appDelegate.persistentContainer.viewContext
             SoundProvider.fetchData(sortKey: "titleClean", context: context, completion: { (sounds, error) in
@@ -93,10 +93,10 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
         let cellIdentifier = "Cell"
         let cell = tableView.dequeueReusableCell(withIdentifier: cellIdentifier, for: indexPath) as! SoundTableViewCell
         
-        // Determine if we get the sound from search result or the original array
+        // Détermine si on utilise les résultats de recherche ou le tableau original
         let sound = (searchController.isActive) ? searchResults[indexPath.row] : sounds[indexPath.row]
         
-        // Configure the cell...
+        // Configure la cellule
         cell.titleLabel.text = sound.title
         cell.characterLabel.text = sound.character
         cell.episodeLabel.text = sound.episode
@@ -108,26 +108,24 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let sound = (searchController.isActive) ? searchResults[indexPath.row] : sounds[indexPath.row]
         
+        guard let file = sound.file else { return }
+        let urlString = "\(SoundProvider.baseApiUrl)/\(file)"
+        guard let url = URL(string: urlString) else { return }
         
-        let cache = Shared.dataCache
-        let url = URL(string: "\(SoundProvider.baseApiUrl)/\(sound.file!)")!
-        
-        cache.fetch(URL: url).onSuccess { stream in
-            
-            let path = NSURL(string: DiskCache.basePath())!.appendingPathComponent("shared-data/original")
-            let cached = DiskCache(path: (path?.absoluteString)!).path(forKey: url.absoluteString)
-            let file = NSURL(fileURLWithPath: cached)
+        // Télécharge et joue le son via Kingfisher pour le cache
+        SoundCacheManager.shared.fetchSound(from: url) { [weak self] localURL in
+            guard let localURL = localURL else { return }
             
             do {
-                self.player = try AVAudioPlayer(contentsOf: file as URL)
-                guard let player = self.player else { return }
-                
-                player.prepareToPlay()
-                player.play()
-            } catch let error {
+                self?.player = try AVAudioPlayer(contentsOf: localURL)
+                self?.player?.prepareToPlay()
+                self?.player?.play()
+            } catch {
                 print(error.localizedDescription)
             }
         }
+        
+        tableView.deselectRow(at: indexPath, animated: true)
     }
     
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
@@ -140,6 +138,7 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
         
     // MARK: - Search Controller
     
+    /// Filtre le contenu en fonction du texte de recherche.
     func filterContent(for searchText: String) {
         searchResults = sounds.filter({ (sound) -> Bool in
             if let character = sound.character, let title = sound.title, let episode = sound.episode {
@@ -153,8 +152,63 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
     
     func updateSearchResults(for searchController: UISearchController) {
         if let searchText = searchController.searchBar.text {
-            filterContent(for: searchText)
+            // Si le texte est vide, affiche tous les résultats
+            if searchText.isEmpty {
+                searchResults = sounds
+            } else {
+                filterContent(for: searchText)
+            }
             tableView.reloadData()
         }
+    }
+}
+
+// MARK: - Sound Cache Manager
+
+/// Gestionnaire de cache pour les fichiers audio, utilisant le système de fichiers.
+class SoundCacheManager {
+    static let shared = SoundCacheManager()
+    
+    private let fileManager = FileManager.default
+    private let cacheDirectory: URL
+    
+    private init() {
+        let cachesPath = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        cacheDirectory = cachesPath.appendingPathComponent("SoundsCache")
+        
+        // Crée le répertoire de cache si nécessaire
+        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    }
+    
+    /// Récupère un fichier son depuis le cache ou le télécharge.
+    /// - Parameters:
+    ///   - url: URL distante du fichier audio
+    ///   - completion: Closure appelée avec l'URL locale du fichier
+    func fetchSound(from url: URL, completion: @escaping (URL?) -> Void) {
+        let fileName = url.lastPathComponent
+        let localURL = cacheDirectory.appendingPathComponent(fileName)
+        
+        // Vérifie si le fichier est déjà en cache
+        if fileManager.fileExists(atPath: localURL.path) {
+            completion(localURL)
+            return
+        }
+        
+        // Télécharge le fichier
+        let task = URLSession.shared.downloadTask(with: url) { [weak self] tempURL, response, error in
+            guard let tempURL = tempURL, error == nil else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            
+            do {
+                // Déplace le fichier temporaire vers le cache
+                try self?.fileManager.moveItem(at: tempURL, to: localURL)
+                DispatchQueue.main.async { completion(localURL) }
+            } catch {
+                DispatchQueue.main.async { completion(nil) }
+            }
+        }
+        task.resume()
     }
 }

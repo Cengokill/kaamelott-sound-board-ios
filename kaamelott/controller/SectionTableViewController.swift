@@ -9,7 +9,6 @@
 import UIKit
 import CoreData
 import AVFoundation
-import Haneke
 
 class SectionTableViewController: UITableViewController, NSFetchedResultsControllerDelegate, UISearchResultsUpdating {
     
@@ -46,33 +45,35 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Remove the title of the back button
+        // Supprime le titre du bouton retour
         navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
         
-        // Enable Self Sizing Cells
+        // Active le dimensionnement automatique des cellules
         tableView.estimatedRowHeight = 80.0
-        tableView.rowHeight = UITableViewAutomaticDimension
+        tableView.rowHeight = UITableView.automaticDimension
         
-        // Fetch data from data store
+        // Récupère les données depuis le store
         fetchData {
             self.tableView.reloadData()
         }
         
-        // Register to receive notification
+        // S'inscrit pour recevoir les notifications
         NotificationCenter.default.addObserver(self, selector: #selector(fetchData), name: Notification.Name("SoundAdded"), object: nil)
         
-        // Add a search bar
-        //searchController = UISearchController(searchResultsController: nil)
-        tableView.tableHeaderView = searchController.searchBar
+        // Configure la barre de recherche
+        navigationItem.searchController = searchController
         searchController.searchResultsUpdater = self
-        searchController.dimsBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = "Search sounds..."
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Rechercher des sons..."
         searchController.searchBar.tintColor = UIColor.white
         searchController.searchBar.barTintColor = UIColor.kaamelott
+        definesPresentationContext = true
     }
     
     typealias fetchDataCompletionHandler = () -> Void
-    func fetchData(completion: fetchDataCompletionHandler? = nil) {
+    
+    /// Récupère les données. Doit être surchargée par les sous-classes.
+    @objc func fetchData(completion: fetchDataCompletionHandler? = nil) {
         preconditionFailure("must be override")
     }
     
@@ -91,7 +92,7 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
     }
     
     override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        let  headerCell = tableView.dequeueReusableCell(withIdentifier: "CharacterCell") as! SectionTableViewCell
+        let headerCell = tableView.dequeueReusableCell(withIdentifier: "CharacterCell") as! SectionTableViewCell
         headerCell.backgroundColor = UIColor.kaamelott
         headerCell.characterLabel.text = displayedSections[section]
         headerCell.characterImageView.image = nil
@@ -113,7 +114,7 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
         }
         let sound = values[indexPath.row]
         
-        // Configure the cell...
+        // Configure la cellule
         cell.titleLabel.text = sound.title
         cell.characterLabel.text = sound.character
         cell.episodeLabel.text = sound.episode
@@ -128,33 +129,34 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
         }
         let sound = values[indexPath.row]
         
-        let cache = Shared.dataCache
-        let url = URL(string: "\(SoundProvider.baseApiUrl)/\(sound.file!)")!
+        guard let file = sound.file else { return }
+        let urlString = "\(SoundProvider.baseApiUrl)/\(file)"
+        guard let url = URL(string: urlString) else { return }
         
-        cache.fetch(URL: url).onSuccess { stream in
-            
-            let path = NSURL(string: DiskCache.basePath())!.appendingPathComponent("shared-data/original")
-            let cached = DiskCache(path: (path?.absoluteString)!).path(forKey: url.absoluteString)
-            let file = NSURL(fileURLWithPath: cached)
+        // Télécharge et joue le son via le cache manager
+        SoundCacheManager.shared.fetchSound(from: url) { [weak self] localURL in
+            guard let localURL = localURL else { return }
             
             do {
-                self.player = try AVAudioPlayer(contentsOf: file as URL)
-                guard let player = self.player else { return }
-                
-                player.prepareToPlay()
-                player.play()
-            } catch let error {
+                self?.player = try AVAudioPlayer(contentsOf: localURL)
+                self?.player?.prepareToPlay()
+                self?.player?.play()
+            } catch {
                 print(error.localizedDescription)
             }
         }
+        
+        tableView.deselectRow(at: indexPath, animated: true)
     }
     
     // MARK: - Search Controller
+    
+    /// Filtre le contenu en fonction du texte de recherche.
     func filterContent(for searchText: String) {
-        searchSounds   = [:]
+        searchSounds = [:]
         searchSections = []
         for section in sections {
-            if sounds.index(forKey: section) != nil {
+            if sounds[section] != nil {
                 var values : [SoundMO] = []
                 for sound in sounds[section]! {
                     if let character = sound.character, let title = sound.title, let episode = sound.episode {
@@ -173,12 +175,21 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
     
     func updateSearchResults(for searchController: UISearchController) {
         if let searchText = searchController.searchBar.text {
-            filterContent(for: searchText)
+            // Si le texte est vide, réinitialise pour afficher tous les résultats
+            if searchText.isEmpty {
+                searchSounds = sounds
+                searchSections = sections
+            } else {
+                filterContent(for: searchText)
+            }
             tableView.reloadData()
         }
     }
 }
 
+// MARK: - CharacterTableViewController
+
+/// Contrôleur affichant les sons groupés par personnage.
 class CharacterTableViewController: SectionTableViewController {
     
     override func fetchData(completion: fetchDataCompletionHandler? = nil) {
@@ -190,7 +201,7 @@ class CharacterTableViewController: SectionTableViewController {
                     self.sounds = [:]
                     for object in fetchedObjects {
                         let key = object.characterClean!
-                        if self.sounds.index(forKey: key) == nil {
+                        if self.sounds[key] == nil {
                             self.sections.append(key)
                             self.sounds[key] = [object]
                         } else {
@@ -209,6 +220,9 @@ class CharacterTableViewController: SectionTableViewController {
     }
 }
 
+// MARK: - EpisodeTableViewController
+
+/// Contrôleur affichant les sons groupés par épisode.
 class EpisodeTableViewController: SectionTableViewController {
     
     override func fetchData(completion: fetchDataCompletionHandler? = nil) {
@@ -220,7 +234,7 @@ class EpisodeTableViewController: SectionTableViewController {
                     self.sounds = [:]
                     for object in fetchedObjects {
                         let key = object.episode!
-                        if self.sounds.index(forKey: key) == nil {
+                        if self.sounds[key] == nil {
                             self.sections.append(key)
                             self.sounds[key] = [object]
                         } else {

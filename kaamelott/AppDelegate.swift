@@ -9,72 +9,59 @@
 import UIKit
 import CoreData
 
-@UIApplicationMain
+@main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey : Any]? = nil) -> Bool {
+    /// Configure l'apparence globale de l'application au lancement.
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
-        application.statusBarStyle = .lightContent
-        // Override point for customization after application launch.
+        // Configuration de l'apparence de la barre de navigation
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(netHex: 0x2EC0B4)
+        appearance.titleTextAttributes = [
+            .foregroundColor: UIColor.white,
+            .font: UIFont(name: "AvenirNextCondensed-DemiBold", size: 24.0) ?? UIFont.systemFont(ofSize: 24.0)
+        ]
         
-        UINavigationBar.appearance().barTintColor = UIColor(netHex: 0x2EC0B4)
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
         UINavigationBar.appearance().tintColor = UIColor.white
         
-        if let barFont = UIFont(name: "AvenirNextCondensed-DemiBold", size: 24.0) {
-            UINavigationBar.appearance().titleTextAttributes = [NSForegroundColorAttributeName:UIColor.white, NSFontAttributeName:barFont]
-        }
-        
-        UIApplication.shared.statusBarStyle = .lightContent
         return true
     }
     
     func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
+        // Appelé lorsque l'application passe de l'état actif à inactif.
     }
     
     func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        // Libère les ressources partagées, sauvegarde les données utilisateur.
     }
     
     func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
+        // Appelé lors de la transition du background vers l'état actif.
     }
     
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        // Redémarre les tâches qui ont été mises en pause.
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+        // Appelé lorsque l'application est sur le point de se terminer.
     }
     
     // MARK: - Core Data stack
     
     lazy var persistentContainer: NSPersistentContainer = {
-        /*
-         The persistent container for the application. This implementation
-         creates and returns a container, having loaded the store for the
-         application to it. This property is optional since there are legitimate
-         error conditions that could cause the creation of the store to fail.
-         */
+        /// Le conteneur persistant pour l'application. Crée et retourne un conteneur
+        /// après avoir chargé le store de l'application.
         let container = NSPersistentContainer(name: "Kaamelott")
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                
-                /*
-                 Typical reasons for an error here include:
-                 * The parent directory does not exist, cannot be created, or disallows writing.
-                 * The persistent store is not accessible, due to permissions or data protection when the device is locked.
-                 * The device is out of space.
-                 * The store could not be migrated to the current model version.
-                 Check the error message to determine what the actual problem was.
-                 */
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
         })
@@ -83,19 +70,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     // MARK: - Core Data Saving support
     
+    /// Sauvegarde le contexte Core Data si des modifications sont présentes.
+    /// - Parameter context: Le contexte à sauvegarder. Utilise le viewContext par défaut.
     func saveContext (_ context : NSManagedObjectContext? = nil) {
-        
-        let mContext = context != nil ? context! : persistentContainer.viewContext
+        let mContext = context ?? persistentContainer.viewContext
         if mContext.hasChanges {
             do {
                 try mContext.save()
             } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
                 let nserror = error as NSError
                 fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
             }
         }
     }
 }
-
