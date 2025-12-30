@@ -140,14 +140,21 @@ class SoundTableViewController: UITableViewController, NSFetchedResultsControlle
     
     /// Filtre le contenu en fonction du texte de recherche.
     func filterContent(for searchText: String) {
-        searchResults = sounds.filter({ (sound) -> Bool in
-            if let character = sound.character, let title = sound.title, let episode = sound.episode {
-                let isMatch = character.localizedCaseInsensitiveContains(searchText) || title.localizedCaseInsensitiveContains(searchText) || episode.localizedCaseInsensitiveContains(searchText)
-                return isMatch
+        let foldedQuery = searchText.foldedForSearch()
+        var results: [SoundMO] = []
+        results.reserveCapacity(sounds.count)
+        
+        for sound in sounds {
+            guard let character = sound.character, let title = sound.title, let episode = sound.episode else {
+                continue
             }
             
-            return false
-        })
+            if character.containsFoldedQuery(foldedQuery) || title.containsFoldedQuery(foldedQuery) || episode.containsFoldedQuery(foldedQuery) {
+                results.append(sound)
+            }
+        }
+        
+        searchResults = results
     }
     
     func updateSearchResults(for searchController: UISearchController) {

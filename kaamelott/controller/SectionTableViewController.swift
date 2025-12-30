@@ -153,6 +153,7 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
     
     /// Filtre le contenu en fonction du texte de recherche.
     func filterContent(for searchText: String) {
+        let foldedQuery = searchText.foldedForSearch()
         searchSounds = [:]
         searchSections = []
         for section in sections {
@@ -160,7 +161,7 @@ class SectionTableViewController: UITableViewController, NSFetchedResultsControl
                 var values : [SoundMO] = []
                 for sound in sounds[section]! {
                     if let character = sound.character, let title = sound.title, let episode = sound.episode {
-                        if character.localizedCaseInsensitiveContains(searchText) || title.localizedCaseInsensitiveContains(searchText) || episode.localizedCaseInsensitiveContains(searchText) {
+                        if character.containsFoldedQuery(foldedQuery) || title.containsFoldedQuery(foldedQuery) || episode.containsFoldedQuery(foldedQuery) {
                             values.append(sound)
                         }
                     }

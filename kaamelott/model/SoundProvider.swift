@@ -153,9 +153,12 @@ class SoundProvider {
                     
                     if let sound = dictionnaire[fileKey] {
                         sound.character = obj["character"] ?? ""
+                        sound.characterClean = (sound.character ?? "").folding(options: .diacriticInsensitive, locale: .current)
                         sound.episode = obj["episode"] ?? ""
+                        sound.episodeClean = (sound.episode ?? "").folding(options: .diacriticInsensitive, locale: .current)
                         sound.file = obj["file"] ?? ""
                         sound.title = obj["title"] ?? ""
+                        sound.titleClean = (sound.title ?? "").folding(options: .diacriticInsensitive, locale: .current)
                         results.append(sound)
                         dictionnaire.removeValue(forKey: fileKey)
                     } else {
