@@ -4,7 +4,7 @@ Application mobile permettant de jouer des répliques de Kaamelott.
 
 ## À propos
 
-Ce dépôt est un **fork** de [`2ec0b4/kaamelott-soundboard`](https://github.com/2ec0b4/kaamelott-soundboard).
+Ce dépôt est un **fork** de https://github.com/tnducrocq/kaamelott-sound-board-ios.
 
 - **Objectif du fork** : garder l’app **compatible avec les versions récentes d’iOS**, là où le projet original n’est plus mis à jour depuis **2017**.
 - **Source des sons** : les fichiers audio et la liste des sons proviennent du dépôt original.
