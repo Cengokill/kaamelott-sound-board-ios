@@ -1,11 +1,29 @@
-# Kaamelott Soundboard iOS #
+# Kaamelott Soundboard iOS (fork) #
 
 Application mobile permettant de jouer des répliques de Kaamelott.
-Les fichiers sont repris sur le GitHub de [2ec0b4](https://github.com/2ec0b4/kaamelott-soundboard)
+
+## À propos
+
+Ce dépôt est un **fork** de [`2ec0b4/kaamelott-soundboard`](https://github.com/2ec0b4/kaamelott-soundboard).
+
+- **Objectif du fork** : garder l’app **compatible avec les versions récentes d’iOS**, là où le projet original n’est plus mis à jour depuis **2017**.
+- **Source des sons** : les fichiers audio et la liste des sons proviennent du dépôt original.
+
+## Compatibilité iOS
+
+Ce projet est configuré avec un **minimum iOS 15.0** :
+
+- **CocoaPods** : `platform :ios, '15.0'` dans le `Podfile`.
+- **Xcode** : `IPHONEOS_DEPLOYMENT_TARGET = 15.0` dans `kaamelott.xcodeproj/project.pbxproj`.
+
+👉 En pratique, l’app est donc **compatible iOS 15+** (iOS 15, 16, 17, 18, 26, etc.).
 
 ## Lancer le projet ##
 
-Pour faire fonctionner le projet sur votre iPhone, exécuter la commande pod install, ouvrer kaamelott.xcworkspace avec Xcode.
+Pour faire fonctionner le projet sur votre iPhone :
+
+1. Exécutez `pod install`
+2. Ouvrez `kaamelott.xcworkspace` avec Xcode
 
 ## App Store ##
 
@@ -17,6 +35,6 @@ C'est pas bientôt fini?
 
 ## Contribuer ##
 
-[2ec0b4/kaamelott-soundboard](https://github.com/2ec0b4/kaamelott-soundboard)
+- Projet original : [`2ec0b4/kaamelott-soundboard`](https://github.com/2ec0b4/kaamelott-soundboard)
 
 Merci, de rien, au revoir m'sieur dame
