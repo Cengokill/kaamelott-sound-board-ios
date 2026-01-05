@@ -25,6 +25,11 @@ Pour faire fonctionner le projet sur votre iPhone :
 1. Exécutez `pod install`
 2. Ouvrez `kaamelott.xcworkspace` avec Xcode
 
+<img width="590" height="1278" alt="IMG_4029" src="https://github.com/user-attachments/assets/301ae951-5efe-4312-b395-9ca9d6cd230a" />
+<img width="590" height="1278" alt="IMG_4028" src="https://github.com/user-attachments/assets/27874934-da91-4557-8182-89b5f79b05d5" />
+<img width="590" height="1278" alt="IMG_4027" src="https://github.com/user-attachments/assets/7dcd4ec4-62cb-469e-92a2-397e27167d75" />
+
+
 ## App Store ##
 
 C'est pas bientôt fini?
